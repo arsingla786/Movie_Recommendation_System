@@ -1,6 +1,8 @@
 import streamlit as st
 import pickle 
-
+import requests
+import certifi 
+import time 
 movies_dict = pickle.load(open('movies.pkl','rb'))
 
 print(movies_dict.keys())
@@ -8,6 +10,48 @@ print(movies_dict.keys())
 movies_list = list(movies_dict['title'].values())
 #convert dict of movie_id to list
 movie_ids = list(movies_dict['movie_id'].values())
+
+#fetch movie poster
+
+@st.cache_data(ttl=86400, show_spinner=True)
+def fetch_movie_poster(movie_id):
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+
+    params = {
+        "api_key": "b760e48333dec8f0ba13f5a4190beeb0"
+    }
+
+    for attempt in range(3):
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=15
+            )
+
+            response.raise_for_status()
+            data = response.json()
+
+            poster_path = data.get("poster_path")
+
+            if poster_path:
+                return (
+                    "https://image.tmdb.org/t/p/w500"
+                    + poster_path
+                )
+
+            return None
+
+        except requests.exceptions.RequestException as e:
+            print(
+                f"Attempt {attempt + 1} failed "
+                f"for movie {movie_id}: {e}"
+            )
+
+            if attempt < 2:
+                time.sleep(1)
+
+    return None
 
 st.title('Movie Recommender System')
 
@@ -32,21 +76,24 @@ def recommend(selected_movie_name):
 
     recommended_movies = []
     recommended_movie_ids = []
-
+    recommended_movie_poster = []
     for i in my_list:
         recommended_movies.append(movies_list[i[0]])
         recommended_movie_ids.append(movie_ids[i[0]])
-
-    return recommended_movies, recommended_movie_ids
+        recommended_movie_poster.append(fetch_movie_poster(movie_ids[i[0]]))
+    return recommended_movies, recommended_movie_ids, recommended_movie_poster
 
 
 if st.button('Recommend'):
-    recommended_movies, recommended_movie_ids = recommend(selected_movie_name)
+    recommended_movies, recommended_movie_ids, posters = recommend(selected_movie_name)
 
-    for movie_id, movie in zip(recommended_movie_ids, recommended_movies):
-        st.write(f"Movie ID: {movie_id}")
-        st.write(f"Movie Title: {movie}")
+    cols = st.columns(5)
 
+    for col, movie_id, movie, poster in zip(cols, recommended_movie_ids, recommended_movies, posters):
+        with col:
             
-
+            if poster is not None:
+                st.image(poster, use_container_width=True)
+            st.write(f"Movie ID: {movie_id}")
+            st.write(f"Movie Title: {movie}")
 
