@@ -13,7 +13,7 @@ movie_ids = list(movies_dict['movie_id'].values())
 
 #fetch movie poster
 
-@st.cache_data(ttl=86400, show_spinner=True)
+@st.cache_data(ttl=86400, show_spinner=False)
 def fetch_movie_poster(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}"
 
@@ -21,7 +21,7 @@ def fetch_movie_poster(movie_id):
         "api_key": "b760e48333dec8f0ba13f5a4190beeb0"
     }
 
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             response = requests.get(
                 url,
@@ -48,7 +48,7 @@ def fetch_movie_poster(movie_id):
                 f"for movie {movie_id}: {e}"
             )
 
-            if attempt < 2:
+            if attempt < 5:
                 time.sleep(1)
 
     return None
@@ -85,7 +85,8 @@ def recommend(selected_movie_name):
 
 
 if st.button('Recommend'):
-    recommended_movies, recommended_movie_ids, posters = recommend(selected_movie_name)
+    with st.spinner('Finding the best movies for you... 🍿'):
+        recommended_movies, recommended_movie_ids, posters = recommend(selected_movie_name)
 
     cols = st.columns(5)
 
@@ -96,4 +97,3 @@ if st.button('Recommend'):
                 st.image(poster, use_container_width=True)
             st.write(f"Movie ID: {movie_id}")
             st.write(f"Movie Title: {movie}")
-
